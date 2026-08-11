@@ -3,6 +3,7 @@ import cors from "cors";
 import { healthRouter } from "./routes/health.js";
 import { roomsRouter } from "./routes/rooms.js";
 import { employeesRouter } from "./routes/employees.js";
+import { businessHoursRouter } from "./routes/business-hours.js";
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err);
@@ -19,6 +20,7 @@ export function createApp() {
   app.use(healthRouter);
   app.use(roomsRouter);
   app.use(employeesRouter);
+  app.use(businessHoursRouter);
 
   app.use(errorHandler);
 

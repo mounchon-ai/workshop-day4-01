@@ -27,3 +27,11 @@ model Employee {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
+
+model BusinessHours {
+  dayOfWeek Int      @id
+  openTime  String
+  closeTime String
+  isOpen    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}

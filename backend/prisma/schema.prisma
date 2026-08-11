@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Prisma requires at least one model to generate a client. Room is the
+// first table ticket 02 (Room management) needs anyway, so it is defined
+// here rather than as a throwaway table — the health-check endpoint uses
+// it only to prove the Prisma -> SQLite wiring works end-to-end.
+model Room {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  capacity  Int
+  building  String
+  floor     String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

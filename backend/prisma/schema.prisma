@@ -7,10 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Prisma requires at least one model to generate a client. Room is the
-// first table ticket 02 (Room management) needs anyway, so it is defined
-// here rather than as a throwaway table — the health-check endpoint uses
-// it only to prove the Prisma -> SQLite wiring works end-to-end.
 model Room {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -20,4 +16,14 @@ model Room {
   status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Employee {
+  id         String   @id @default(cuid())
+  firstName  String
+  lastName   String
+  department String
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

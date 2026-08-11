@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/table";
 import { useApiList } from "@/lib/use-api-list";
 import { EmployeePicker, type Employee } from "@/components/employee-picker";
+import { formatBangkokCompact } from "@/lib/bangkok-time";
+import { useNow } from "@/lib/use-now";
 
 type Room = {
   id: string;
@@ -39,14 +41,6 @@ const STATUS_LABELS: Record<string, string> = {
   completed: "เสร็จสิ้น",
 };
 
-function formatBangkok(iso: string) {
-  return new Intl.DateTimeFormat("th-TH", {
-    timeZone: "Asia/Bangkok",
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
 function MyBookings() {
   const searchParams = useSearchParams();
   const initialEmployeeId = searchParams.get("employeeId");
@@ -71,11 +65,7 @@ function MyBookings() {
   const path = employee ? `/api/bookings?employeeId=${employee.id}` : null;
   const { data: bookings } = useApiList<Booking>(path);
 
-  // Captured once per mount rather than read directly in the render body,
-  // which the React Compiler's purity rule (react-hooks/purity) rejects for
-  // `Date.now()`. "Upcoming" only needs to be accurate for this page view,
-  // not to the millisecond on every re-render.
-  const [now] = useState(() => Date.now());
+  const now = useNow();
   const upcoming = bookings.filter((b) => new Date(b.endAt).getTime() >= now);
   const visibleBookings = upcomingOnly ? upcoming : bookings;
 
@@ -130,7 +120,7 @@ function MyBookings() {
                 {visibleBookings.map((booking) => (
                   <TableRow key={booking.id}>
                     <TableCell>{booking.room.name}</TableCell>
-                    <TableCell>{formatBangkok(booking.startAt)}</TableCell>
+                    <TableCell>{formatBangkokCompact(booking.startAt)}</TableCell>
                     <TableCell>{booking.title}</TableCell>
                     <TableCell>{STATUS_LABELS[booking.status] ?? booking.status}</TableCell>
                     <TableCell>

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { apiRequest, type FieldError } from "@/lib/api";
 import { useApiList } from "@/lib/use-api-list";
+import { todayInBangkok } from "@/lib/bangkok-time";
 
 type Room = {
   id: string;
@@ -37,10 +38,6 @@ type SearchResult =
   | { kind: "results"; rooms: Room[] }
   | { kind: "empty" }
   | { kind: "outside_hours"; businessHours: BusinessHoursDay | null };
-
-function todayInBangkok() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date());
-}
 
 export default function Home() {
   const { data: allRooms } = useApiList<Room>("/api/rooms");

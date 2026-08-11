@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { apiRequest, type FieldError } from "@/lib/api";
 import { useApiList } from "@/lib/use-api-list";
 import { EmployeePicker, type Employee } from "@/components/employee-picker";
+import { formatBangkok } from "@/lib/bangkok-time";
 
 type Room = {
   id: string;
@@ -30,14 +31,6 @@ type BookingDetail = {
 };
 
 type RejectionReason = { rule: string; message: string };
-
-function formatBangkok(iso: string) {
-  return new Intl.DateTimeFormat("th-TH", {
-    timeZone: "Asia/Bangkok",
-    dateStyle: "long",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
 
 function BookingForm() {
   const searchParams = useSearchParams();

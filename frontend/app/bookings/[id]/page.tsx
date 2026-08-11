@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api";
+import { formatBangkok } from "@/lib/bangkok-time";
+import { useNow } from "@/lib/use-now";
 
 type Room = {
   id: string;
@@ -38,14 +40,6 @@ const STATUS_LABELS: Record<string, string> = {
   completed: "เสร็จสิ้น",
 };
 
-function formatBangkok(iso: string) {
-  return new Intl.DateTimeFormat("th-TH", {
-    timeZone: "Asia/Bangkok",
-    dateStyle: "long",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
 function BookingDetail({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const employeeId = searchParams.get("employeeId");
@@ -53,6 +47,7 @@ function BookingDetail({ id }: { id: string }) {
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const now = useNow();
 
   useEffect(() => {
     let ignore = false;
@@ -83,6 +78,12 @@ function BookingDetail({ id }: { id: string }) {
   if (!booking) {
     return null;
   }
+
+  // A viewer with no ?employeeId= in the URL (e.g. landing here directly)
+  // isn't "someone" yet, so ownership can't be established client-side —
+  // the edit link stays hidden either way; PUT enforces this authoritatively.
+  const isOwner = employeeId !== null && employeeId === booking.employee.id;
+  const ended = new Date(booking.endAt).getTime() < now;
 
   return (
     <div className="mx-auto max-w-xl p-8">
@@ -115,9 +116,20 @@ function BookingDetail({ id }: { id: string }) {
         </p>
       </div>
 
-      <Link href={backHref} className={buttonVariants({ variant: "outline", className: "mt-6" })}>
-        กลับไปที่รายการ
-      </Link>
+      {isOwner && ended && (
+        <p className="mt-2 text-sm text-muted-foreground">Booking นี้ผ่านไปแล้ว ไม่สามารถแก้ไขได้</p>
+      )}
+
+      <div className="mt-6 flex gap-2">
+        <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
+          กลับไปที่รายการ
+        </Link>
+        {isOwner && !ended && (
+          <Link href={`/bookings/${booking.id}/edit?employeeId=${employeeId}`} className={buttonVariants({})}>
+            แก้ไข
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

@@ -204,6 +204,20 @@ function EditBookingForm({ id }: { id: string }) {
     );
   }
 
+  // A cancelled booking has no path back to "confirmed" (DR-08) — mirrored
+  // here the same way ownership and ended are, so the form never renders
+  // just to fail against PUT's booking_cancelled check.
+  if (booking.status === "cancelled") {
+    return (
+      <div className="mx-auto max-w-xl p-8">
+        <p className="text-sm text-red-600">Booking นี้ถูกยกเลิกไปแล้ว ไม่สามารถแก้ไขได้</p>
+        <Link href={detailHref} className={buttonVariants({ variant: "outline", className: "mt-4" })}>
+          กลับไปดูรายละเอียด
+        </Link>
+      </div>
+    );
+  }
+
   if (new Date(booking.endAt).getTime() < now) {
     return (
       <div className="mx-auto max-w-xl p-8">

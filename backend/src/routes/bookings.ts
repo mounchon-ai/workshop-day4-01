@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { bookingInputSchema } from "../schemas/booking.js";
+import { bookingCancelSchema } from "../schemas/booking-cancel.js";
 import { bookingListQuerySchema } from "../schemas/booking-list.js";
 import { parseBody } from "../validation.js";
 import { dayOfWeekForDate, toBangkokInstant } from "../bangkok-time.js";
@@ -15,6 +16,18 @@ type RejectionReason = { rule: string; message: string };
 class BookingRejectedError extends Error {
   constructor(public reasons: RejectionReason[]) {
     super("booking_rejected");
+  }
+}
+
+class AlreadyCancelledError extends Error {
+  constructor(public booking: Prisma.BookingGetPayload<{ include: typeof bookingInclude }>) {
+    super("already_cancelled");
+  }
+}
+
+class BookingEndedError extends Error {
+  constructor() {
+    super("booking_ended");
   }
 }
 
@@ -236,6 +249,18 @@ bookingsRouter.put("/api/bookings/:id", async (req, res, next) => {
       return;
     }
 
+    // A cancelled booking has no path back to "confirmed" (DR-08's state
+    // diagram) — a future endAt no longer implies it's editable once
+    // cancellation makes this reachable, so this must be checked separately
+    // from (and before) the endAt check below.
+    if (existing.status === "cancelled") {
+      res.status(409).json({
+        error: "booking_cancelled",
+        message: "Booking นี้ถูกยกเลิกไปแล้ว ไม่สามารถแก้ไขได้",
+      });
+      return;
+    }
+
     if (existing.endAt.getTime() < Date.now()) {
       res.status(409).json({
         error: "booking_ended",
@@ -288,6 +313,80 @@ bookingsRouter.put("/api/bookings/:id", async (req, res, next) => {
   } catch (err) {
     if (err instanceof BookingRejectedError) {
       res.status(409).json({ error: "booking_rejected", reasons: err.reasons });
+      return;
+    }
+    next(err);
+  }
+});
+
+// FR-BKG-14/15/16, UC-04: cancellation only ever flips status (DR-08 — the
+// row and its audit trail are never deleted). The already-cancelled state is
+// checked and handled inside the same transaction as the update+audit write,
+// not before it, so two concurrent cancels can't both pass the check and
+// both write a "cancel" audit entry (NFR-PERF-06).
+bookingsRouter.post("/api/bookings/:id/cancel", async (req, res, next) => {
+  const parsed = parseBody(bookingCancelSchema, req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", fields: parsed.errors });
+    return;
+  }
+
+  const { employeeId } = parsed.data;
+
+  try {
+    const existing = await prisma.booking.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      res.status(404).json({ error: "booking_not_found" });
+      return;
+    }
+
+    if (existing.employeeId !== employeeId) {
+      res.status(403).json({ error: "not_owner", message: "ยกเลิกได้เฉพาะเจ้าของ Booking เท่านั้น" });
+      return;
+    }
+
+    const booking = await prisma.$transaction(async (tx) => {
+      const current = await tx.booking.findUniqueOrThrow({
+        where: { id: existing.id },
+        include: bookingInclude,
+      });
+
+      // Checked in this order, inside the same transaction as the write:
+      // a booking that is both cancelled and past its endAt must report
+      // already_cancelled, not booking_ended — cancellation is the more
+      // specific, already-final state.
+      if (current.status === "cancelled") {
+        throw new AlreadyCancelledError(current);
+      }
+
+      if (current.endAt.getTime() < Date.now()) {
+        throw new BookingEndedError();
+      }
+
+      const updated = await tx.booking.update({
+        where: { id: existing.id },
+        data: { status: "cancelled" },
+        include: bookingInclude,
+      });
+
+      await tx.bookingAudit.create({
+        data: { bookingId: updated.id, action: "cancel", actorEmployeeId: employeeId },
+      });
+
+      return updated;
+    });
+
+    res.status(200).json(booking);
+  } catch (err) {
+    if (err instanceof AlreadyCancelledError) {
+      res.status(409).json({ error: "already_cancelled", booking: err.booking });
+      return;
+    }
+    if (err instanceof BookingEndedError) {
+      res.status(409).json({
+        error: "booking_ended",
+        message: "ไม่สามารถยกเลิก Booking ที่ผ่านไปแล้วได้",
+      });
       return;
     }
     next(err);

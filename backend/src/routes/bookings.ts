@@ -1,10 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { bookingInputSchema } from "../schemas/booking.js";
+import { bookingListQuerySchema } from "../schemas/booking-list.js";
 import { parseBody } from "../validation.js";
 import { dayOfWeekForDate, toBangkokInstant } from "../bangkok-time.js";
 
 export const bookingsRouter = Router();
+
+const bookingInclude = { room: true, employee: true } as const;
 
 type RejectionReason = { rule: string; message: string };
 
@@ -13,6 +16,41 @@ class BookingRejectedError extends Error {
     super("booking_rejected");
   }
 }
+
+bookingsRouter.get("/api/bookings", async (req, res, next) => {
+  const parsed = parseBody(bookingListQuerySchema, req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", fields: parsed.errors });
+    return;
+  }
+
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: { employeeId: parsed.data.employeeId },
+      orderBy: { startAt: "desc" },
+      include: bookingInclude,
+    });
+    res.status(200).json(bookings);
+  } catch (err) {
+    next(err);
+  }
+});
+
+bookingsRouter.get("/api/bookings/:id", async (req, res, next) => {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: req.params.id },
+      include: bookingInclude,
+    });
+    if (!booking) {
+      res.status(404).json({ error: "booking_not_found" });
+      return;
+    }
+    res.status(200).json(booking);
+  } catch (err) {
+    next(err);
+  }
+});
 
 bookingsRouter.post("/api/bookings", async (req, res, next) => {
   const parsed = parseBody(bookingInputSchema, req.body);
@@ -100,7 +138,7 @@ bookingsRouter.post("/api/bookings", async (req, res, next) => {
 
       const created = await tx.booking.create({
         data: { roomId, employeeId, title, attendeeCount, startAt, endAt, status: "confirmed" },
-        include: { room: true, employee: true },
+        include: bookingInclude,
       });
 
       await tx.bookingAudit.create({

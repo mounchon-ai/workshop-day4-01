@@ -1,0 +1,9 @@
+{
+  "theme": "default",
+  "themeVariables": {
+    "fontFamily": "Leelawadee UI, Tahoma, Noto Sans Thai, Arial, sans-serif",
+    "fontSize": "16px"
+  },
+  "flowchart": { "htmlLabels": true, "curve": "basis", "padding": 12 },
+  "mindmap": { "padding": 12 }
+}

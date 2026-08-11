@@ -1,0 +1,23 @@
+
+
+/srs-overview
+1. บทนำ	วัตถุประสงค์, ขอบเขต, นิยามศัพท์, เอกสารอ้างอิง	— (ใส่ตารางอภิธานศัพท์แทน)
+2. ภาพรวมระบบ	มุมมองผลิตภัณฑ์, ผู้ใช้งาน, ข้อจำกัด, สมมติฐาน	System Context Diagram (DFD Level 0), BPMN กระบวนการทำงานปัจจุบัน (As-Is) และที่ออกแบบใหม่ (To-Be), Stakeholder Map
+ - 01-overview.md
+/srs-function
+3. ความต้องการเชิงหน้าที่	รายการฟังก์ชันแยกตามโมดูล	Use Case Diagram, Use Case Description (ตาราง), Activity Diagram ต่อ use case สำคัญ, DFD Level 1–2, State Diagram สำหรับข้อมูลที่มีสถานะ (เช่น ใบคำขอ)
+4. ความต้องการที่ไม่ใช่เชิงหน้าที่	Performance, Security, Availability, Usability, Compliance (PDPA)	ส่วนใหญ่เป็นตาราง; อาจใส่ Workload/Concurrent User Chart
+ - 02-function.md
+/srs-datamodel 
+5. ความต้องการด้านข้อมูล	ข้อมูลหลัก, ปริมาณ, การเก็บรักษา	Conceptual ERD, Data Dictionary เบื้องต้น
+6. ความต้องการด้าน Interface	หน้าจอ, ระบบภายนอกที่ต้องเชื่อม, ฮาร์ดแวร์	Wireframe/Mockup ระดับหยาบ, Integration/Interface Diagram, ตารางรายการ API ที่ต้องเชื่อม
+ - 03-datamodel.md
+
+/srs-secenario
+7. ตารางสอบทานความต้องการ	RTM (Requirement Traceability Matrix)	ตาราง mapping TOR ↔ Requirement ID ↔ ฟังก์ชัน
+
+
+
+/srs-overview-Word
+/srs-function-Word
+/srs-all-Word

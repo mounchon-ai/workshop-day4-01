@@ -29,13 +29,13 @@ type Employee = {
 
 type Booking = {
   id: string;
-  title: string;
+  title: string | null;
   attendeeCount: number;
   startAt: string;
   endAt: string;
   status: string;
   room: Room;
-  employee: Employee;
+  employee: Employee | null;
 };
 
 type RejectionReason = { rule: string; message: string };
@@ -75,7 +75,7 @@ function EditBookingForm({ id }: { id: string }) {
     setSyncedBooking(booking);
     if (booking) {
       setRoomId(booking.room.id);
-      setTitle(booking.title);
+      setTitle(booking.title ?? "");
       setAttendeeCount(String(booking.attendeeCount));
       setDate(toBangkokDateString(booking.startAt));
       setStartTime(toBangkokTimeString(booking.startAt));
@@ -193,7 +193,9 @@ function EditBookingForm({ id }: { id: string }) {
   // Ownership is checked first, before the edit form is shown at all — the
   // same gate PUT enforces authoritatively (FR-BKG-12), mirrored here so a
   // non-owner (or a stale/direct link) never sees a form that can only fail.
-  if (employeeId !== booking.employee.id) {
+  // An erased booking (employee: null, ticket 12) has no owner left to
+  // match, so this also correctly blocks editing it for everyone.
+  if (booking.employee === null || employeeId !== booking.employee.id) {
     return (
       <div className="mx-auto max-w-xl p-8">
         <p className="text-sm text-red-600">แก้ไขได้เฉพาะเจ้าของ Booking เท่านั้น</p>

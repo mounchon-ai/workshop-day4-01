@@ -191,7 +191,7 @@ function BookingForm() {
 
         <div className="flex flex-col gap-1">
           <Label htmlFor="employee">ผู้จอง</Label>
-          <EmployeePicker value={employee} onChange={setEmployee} />
+          <EmployeePicker value={employee} onChange={setEmployee} activeOnly />
           {fieldError("employeeId") && (
             <p className="text-sm text-red-600">{fieldError("employeeId")}</p>
           )}

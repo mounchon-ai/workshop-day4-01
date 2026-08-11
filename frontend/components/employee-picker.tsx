@@ -10,23 +10,33 @@ export type Employee = {
   firstName: string;
   lastName: string;
   department: string;
+  status: string;
 };
 
 type Props = {
   value: Employee | null;
   onChange: (employee: Employee | null) => void;
+  // Scoped to callers that need it (the create-booking flow, FR-EMP-05's
+  // "no longer a selectable booking-owner option") — defaulting to
+  // unfiltered so a disabled employee can still be found to view their own
+  // past bookings ("Booking ของฉัน", ticket 07), which this same component
+  // also powers.
+  activeOnly?: boolean;
 };
 
 // FR-EMP-03: booking creation must go through this typeahead, not a plain
 // select, since the employee list can run into the hundreds (ASM-03).
-export function EmployeePicker({ value, onChange }: Props) {
+export function EmployeePicker({ value, onChange, activeOnly = false }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const debouncedQuery = useDebouncedValue(query, 300);
   const path = debouncedQuery
     ? `/api/employees?search=${encodeURIComponent(debouncedQuery)}`
     : "/api/employees";
-  const { data: employees } = useApiList<Employee>(path);
+  const { data: fetchedEmployees } = useApiList<Employee>(path);
+  const employees = activeOnly
+    ? fetchedEmployees.filter((employee) => employee.status === "active")
+    : fetchedEmployees;
 
   function select(employee: Employee) {
     onChange(employee);

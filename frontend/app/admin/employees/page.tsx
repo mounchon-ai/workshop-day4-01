@@ -40,6 +40,25 @@ export default function AdminEmployeesPage() {
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [confirmingErasureId, setConfirmingErasureId] = useState<string | null>(null);
+  const [rowActingId, setRowActingId] = useState<string | null>(null);
+  // Keyed by employee id (not a single slot) — two different rows' actions
+  // can fail around the same time, and each row's error must stay visible
+  // on its own row rather than the later failure hiding the earlier one.
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+
+  function setRowError(employeeId: string, message: string | null) {
+    setRowErrors((prev) => {
+      const next = { ...prev };
+      if (message === null) {
+        delete next[employeeId];
+      } else {
+        next[employeeId] = message;
+      }
+      return next;
+    });
+  }
+
   function fieldError(field: string) {
     return fieldErrors.find((e) => e.field === field)?.message;
   }
@@ -108,6 +127,57 @@ export default function AdminEmployeesPage() {
 
   async function handleConfirmDuplicate() {
     await submitEmployee(true);
+  }
+
+  async function toggleStatus(employee: Employee) {
+    setRowActingId(employee.id);
+    setRowError(employee.id, null);
+
+    const nextStatus = employee.status === "active" ? "disabled" : "active";
+    const result = await apiRequest<Employee>(`/api/employees/${employee.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        department: employee.department,
+        status: nextStatus,
+        // A toggle never changes the name, so it can't create a NEW
+        // duplicate — without this, an employee sharing a name with
+        // another (an explicitly supported state, confirmed at
+        // creation/edit time) could never have its status toggled again,
+        // since the same duplicate the admin already confirmed once would
+        // otherwise re-block every subsequent PUT forever.
+        confirmDuplicate: true,
+      }),
+    });
+
+    setRowActingId(null);
+
+    if (!result.ok) {
+      setRowError(employee.id, result.body.message ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
+      return;
+    }
+
+    await refreshEmployees();
+  }
+
+  async function confirmErasure(employee: Employee) {
+    setRowActingId(employee.id);
+    setRowError(employee.id, null);
+
+    const result = await apiRequest<{ count: number }>(`/api/employees/${employee.id}/erasure`, {
+      method: "POST",
+    });
+
+    setRowActingId(null);
+    setConfirmingErasureId(null);
+
+    if (!result.ok) {
+      setRowError(employee.id, result.body.message ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
+      return;
+    }
+
+    await refreshEmployees();
   }
 
   return (
@@ -211,9 +281,67 @@ export default function AdminEmployeesPage() {
               <TableCell>{employee.department}</TableCell>
               <TableCell>{employee.status === "active" ? "เปิดใช้งาน" : "ปิดใช้งาน"}</TableCell>
               <TableCell>
-                <Button variant="outline" size="sm" onClick={() => startEdit(employee)}>
-                  แก้ไข
-                </Button>
+                {rowErrors[employee.id] && (
+                  <p className="mb-1 whitespace-normal text-sm text-red-600">
+                    {rowErrors[employee.id]}
+                  </p>
+                )}
+                {confirmingErasureId === employee.id ? (
+                  <div className="flex flex-col gap-1">
+                    <p className="whitespace-normal text-sm">
+                      ยืนยันคำขอลบข้อมูลตาม PDPA หรือไม่? การจองเดิมจะไม่ระบุตัวตนเจ้าของอีกต่อไป
+                      และไม่สามารถย้อนกลับได้
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={rowActingId === employee.id}
+                        onClick={() => confirmErasure(employee)}
+                      >
+                        ยืนยันลบข้อมูล
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={rowActingId === employee.id}
+                        onClick={() => setConfirmingErasureId(null)}
+                      >
+                        ไม่ลบ
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={rowActingId === employee.id}
+                      onClick={() => startEdit(employee)}
+                    >
+                      แก้ไข
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={rowActingId === employee.id}
+                      onClick={() => toggleStatus(employee)}
+                    >
+                      {employee.status === "active" ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={rowActingId === employee.id}
+                      onClick={() => {
+                        setRowError(employee.id, null);
+                        setConfirmingErasureId(employee.id);
+                      }}
+                    >
+                      ลบข้อมูล (PDPA)
+                    </Button>
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ))}

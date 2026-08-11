@@ -34,9 +34,16 @@ model Booking {
   id            String         @id @default(cuid())
   roomId        String
   room          Room           @relation(fields: [roomId], references: [id])
-  employeeId    String
-  employee      Employee       @relation(fields: [employeeId], references: [id])
-  title         String
+  // Nullable (ticket 12, PDPA erasure-on-request): §5.5 of the data
+  // requirements is explicit that erasure nulls out employeeId AND title on
+  // every affected Booking (both past and future), then deletes the
+  // Employee row — DR-04's "always references exactly one Employee" is
+  // superseded for erased rows by the mandatory NFR-PDPA-05 (30-day erasure
+  // deadline). room/startAt/endAt/attendeeCount stay intact for anonymous
+  // statistics (NFR-PDPA-07).
+  employeeId    String?
+  employee      Employee?      @relation(fields: [employeeId], references: [id])
+  title         String?
   attendeeCount Int
   startAt       DateTime
   endAt         DateTime
@@ -52,10 +59,10 @@ model Booking {
 }
 
 model BookingAudit {
-  id        String   @id @default(cuid())
-  bookingId String
-  booking   Booking  @relation(fields: [bookingId], references: [id])
-  action    String
+  id              String   @id @default(cuid())
+  bookingId       String
+  booking         Booking  @relation(fields: [bookingId], references: [id])
+  action          String
   // Not a FK to Employee (per DR-03 data dictionary): this is a snapshot of
   // the self-reported employeeId at the time of the action (CON-03), not a
   // verified identity, and must survive independently of the Employee row

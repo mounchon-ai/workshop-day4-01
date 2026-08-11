@@ -14,6 +14,7 @@ import {
 import { useApiList } from "@/lib/use-api-list";
 import { dayOfWeekForDate, toBangkokTimeString, todayInBangkok } from "@/lib/bangkok-time";
 import { BOOKING_STATUS_LABELS } from "@/lib/booking-status";
+import { bookingTitleOrFallback, employeeNameOrFallback } from "@/lib/erasure";
 
 type Room = {
   id: string;
@@ -33,13 +34,13 @@ type Employee = {
 
 type Booking = {
   id: string;
-  title: string;
+  title: string | null;
   attendeeCount: number;
   startAt: string;
   endAt: string;
   status: string;
   room: Room;
-  employee: Employee;
+  employee: Employee | null;
 };
 
 type BusinessHoursDay = {
@@ -183,10 +184,8 @@ export default function CalendarPage() {
                       <TableCell>
                         {toBangkokTimeString(booking.startAt)}-{toBangkokTimeString(booking.endAt)}
                       </TableCell>
-                      <TableCell>{booking.title}</TableCell>
-                      <TableCell>
-                        {booking.employee.firstName} {booking.employee.lastName}
-                      </TableCell>
+                      <TableCell>{bookingTitleOrFallback(booking.title)}</TableCell>
+                      <TableCell>{employeeNameOrFallback(booking.employee)}</TableCell>
                       <TableCell>{BOOKING_STATUS_LABELS[booking.status] ?? booking.status}</TableCell>
                     </TableRow>
                   ))}

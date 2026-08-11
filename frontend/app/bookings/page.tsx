@@ -16,6 +16,7 @@ import { useApiList } from "@/lib/use-api-list";
 import { EmployeePicker, type Employee } from "@/components/employee-picker";
 import { formatBangkokCompact } from "@/lib/bangkok-time";
 import { BOOKING_STATUS_LABELS } from "@/lib/booking-status";
+import { bookingTitleOrFallback } from "@/lib/erasure";
 import { useNow } from "@/lib/use-now";
 
 type Room = {
@@ -27,13 +28,13 @@ type Room = {
 
 type Booking = {
   id: string;
-  title: string;
+  title: string | null;
   attendeeCount: number;
   startAt: string;
   endAt: string;
   status: string;
   room: Room;
-  employee: Employee;
+  employee: Employee | null;
 };
 
 function MyBookings() {
@@ -116,7 +117,7 @@ function MyBookings() {
                   <TableRow key={booking.id}>
                     <TableCell>{booking.room.name}</TableCell>
                     <TableCell>{formatBangkokCompact(booking.startAt)}</TableCell>
-                    <TableCell>{booking.title}</TableCell>
+                    <TableCell>{bookingTitleOrFallback(booking.title)}</TableCell>
                     <TableCell>{BOOKING_STATUS_LABELS[booking.status] ?? booking.status}</TableCell>
                     <TableCell>
                       <Link

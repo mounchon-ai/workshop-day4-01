@@ -13,6 +13,13 @@ import { apiRequest } from "./api";
  * depends on a not-yet-made selection) — no request is made and `data`
  * reads back as `[]`.
  */
+// A single shared reference, not a fresh `[]` per call — some callers
+// compare the returned array by reference (e.g. app/bookings/page.tsx's
+// "has the employee list finished loading" sync) to detect when real data
+// has arrived; a fresh literal on every call breaks that even when nothing
+// has actually changed, and can trigger a synchronous re-render loop.
+const EMPTY_LIST: never[] = [];
+
 export function useApiList<T>(path: string | null) {
   const [data, setData] = useState<T[]>([]);
   // Which path `data` was fetched for, so a path change never flashes the
@@ -47,5 +54,5 @@ export function useApiList<T>(path: string | null) {
     }
   }
 
-  return { data: path !== null && path === dataPath ? data : [], refresh };
+  return { data: path !== null && path === dataPath ? data : EMPTY_LIST, refresh };
 }

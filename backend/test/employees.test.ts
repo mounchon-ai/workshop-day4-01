@@ -172,3 +172,89 @@ describe("PUT /api/employees/:id", () => {
     expect(response.body.error).toBe("duplicate_employee_name");
   });
 });
+
+describe("PUT /api/employees/:id — status toggle (FR-EMP-05)", () => {
+  it("disables an employee", async () => {
+    const created = await request(app).post("/api/employees").send(validEmployee);
+
+    const response = await request(app)
+      .put(`/api/employees/${created.body.id}`)
+      .send({ ...validEmployee, status: "disabled" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("disabled");
+  });
+
+  it("re-enables a disabled employee", async () => {
+    const created = await request(app).post("/api/employees").send(validEmployee);
+    await request(app)
+      .put(`/api/employees/${created.body.id}`)
+      .send({ ...validEmployee, status: "disabled" });
+
+    const response = await request(app)
+      .put(`/api/employees/${created.body.id}`)
+      .send({ ...validEmployee, status: "active" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("active");
+  });
+
+  it("leaves status unchanged when not supplied", async () => {
+    const created = await request(app).post("/api/employees").send(validEmployee);
+    await request(app)
+      .put(`/api/employees/${created.body.id}`)
+      .send({ ...validEmployee, status: "disabled" });
+
+    const response = await request(app).put(`/api/employees/${created.body.id}`).send(validEmployee);
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("disabled");
+  });
+
+  it("does not touch bookings owned by a disabled employee", async () => {
+    const room = (
+      await request(app)
+        .post("/api/rooms")
+        .send({ name: "ห้องประชุมใหญ่", capacity: 10, building: "อาคาร A", floor: "3" })
+    ).body;
+    const created = await request(app).post("/api/employees").send(validEmployee);
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + 3);
+    while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1);
+    const futureMonday = d.toISOString().slice(0, 10);
+    const booking = await request(app).post("/api/bookings").send({
+      roomId: room.id,
+      employeeId: created.body.id,
+      title: "ประชุมทีม",
+      attendeeCount: 5,
+      date: futureMonday,
+      startTime: "09:00",
+      endTime: "10:00",
+    });
+
+    await request(app)
+      .put(`/api/employees/${created.body.id}`)
+      .send({ ...validEmployee, status: "disabled" });
+
+    const stillThere = await request(app).get(`/api/bookings/${booking.body.id}`);
+    expect(stillThere.status).toBe(200);
+    expect(stillThere.body.status).toBe("confirmed");
+    expect(stillThere.body.employee.id).toBe(created.body.id);
+  });
+
+  // Deliberate decision (ticket 12): a disabled employee still exists and
+  // can still own bookings, so a duplicate name is just as ambiguous for an
+  // admin as it would be between two active employees — the duplicate-name
+  // check is not scoped to active employees only.
+  it("still warns about a duplicate name shared with a disabled employee", async () => {
+    const created = await request(app).post("/api/employees").send(validEmployee);
+    await request(app)
+      .put(`/api/employees/${created.body.id}`)
+      .send({ ...validEmployee, status: "disabled" });
+
+    const response = await request(app).post("/api/employees").send(validEmployee);
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe("duplicate_employee_name");
+  });
+});

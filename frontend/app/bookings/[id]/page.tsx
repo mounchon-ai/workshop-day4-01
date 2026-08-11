@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api";
 import { formatBangkok } from "@/lib/bangkok-time";
 import { BOOKING_STATUS_LABELS } from "@/lib/booking-status";
+import { ANONYMIZED_EMPLOYEE_LABEL, bookingTitleOrFallback } from "@/lib/erasure";
 import { useNow } from "@/lib/use-now";
 
 type Room = {
@@ -26,13 +27,13 @@ type Employee = {
 
 type Booking = {
   id: string;
-  title: string;
+  title: string | null;
   attendeeCount: number;
   startAt: string;
   endAt: string;
   status: string;
   room: Room;
-  employee: Employee;
+  employee: Employee | null;
 };
 
 function BookingDetail({ id }: { id: string }) {
@@ -108,7 +109,7 @@ function BookingDetail({ id }: { id: string }) {
   // A viewer with no ?employeeId= in the URL (e.g. landing here directly)
   // isn't "someone" yet, so ownership can't be established client-side —
   // the edit link stays hidden either way; PUT enforces this authoritatively.
-  const isOwner = employeeId !== null && employeeId === booking.employee.id;
+  const isOwner = employeeId !== null && booking.employee !== null && employeeId === booking.employee.id;
   const ended = new Date(booking.endAt).getTime() < now;
   // Once cancelled, a booking has no path back to "confirmed" (DR-08) — the
   // edit/cancel actions must hide for it the same as for an ended booking,
@@ -125,11 +126,13 @@ function BookingDetail({ id }: { id: string }) {
           ชั้น {booking.room.floor}, Capacity {booking.room.capacity})
         </p>
         <p>
-          <span className="font-medium">ผู้จอง:</span> {booking.employee.firstName}{" "}
-          {booking.employee.lastName} ({booking.employee.department})
+          <span className="font-medium">ผู้จอง:</span>{" "}
+          {booking.employee
+            ? `${booking.employee.firstName} ${booking.employee.lastName} (${booking.employee.department})`
+            : ANONYMIZED_EMPLOYEE_LABEL}
         </p>
         <p>
-          <span className="font-medium">หัวข้อ:</span> {booking.title}
+          <span className="font-medium">หัวข้อ:</span> {bookingTitleOrFallback(booking.title)}
         </p>
         <p>
           <span className="font-medium">เวลาเริ่ม:</span> {formatBangkok(booking.startAt)}

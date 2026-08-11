@@ -35,13 +35,16 @@ class BookingEndedError extends Error {
 // failing rule in this tier — Business Hours, Capacity, Conflict — is
 // collected and reported together, not just the first one encountered.
 // Must run inside the caller's transaction (via `tx`), never the top-level
-// `prisma` client — the Conflict check's safety under concurrent requests
-// (NFR-PERF-06) depends on the read-then-write happening in one transaction.
+// `prisma` client — both the Capacity check's safety against a concurrent
+// FR-ROOM-07 capacity decrease and the Conflict check's safety under
+// concurrent requests (NFR-PERF-06) depend on every read happening inside
+// the same transaction as the booking write, not on a value the caller
+// looked up beforehand (room.capacity is read fresh here, not passed in,
+// for exactly this reason — see rooms-protection.test.ts's race test).
 async function evaluateBookingRules(
   tx: Prisma.TransactionClient,
   params: {
     roomId: string;
-    roomCapacity: number;
     attendeeCount: number;
     date: string;
     startTime: string;
@@ -70,10 +73,11 @@ async function evaluateBookingRules(
     });
   }
 
-  if (params.attendeeCount > params.roomCapacity) {
+  const room = await tx.room.findUniqueOrThrow({ where: { id: params.roomId } });
+  if (params.attendeeCount > room.capacity) {
     reasons.push({
       rule: "capacity_exceeded",
-      message: `จำนวนผู้เข้าร่วมเกิน Capacity ของห้องนี้ (สูงสุด ${params.roomCapacity} คน)`,
+      message: `จำนวนผู้เข้าร่วมเกิน Capacity ของห้องนี้ (สูงสุด ${room.capacity} คน)`,
     });
   }
 
@@ -206,7 +210,6 @@ bookingsRouter.post("/api/bookings", async (req, res, next) => {
       res.status(found.error.status).json(found.error.body);
       return;
     }
-    const { room } = found;
 
     const startAt = toBangkokInstant(date, startTime);
     const endAt = toBangkokInstant(date, endTime);
@@ -214,7 +217,6 @@ bookingsRouter.post("/api/bookings", async (req, res, next) => {
     const booking = await prisma.$transaction(async (tx) => {
       const reasons = await evaluateBookingRules(tx, {
         roomId,
-        roomCapacity: room.capacity,
         attendeeCount,
         date,
         startTime,
@@ -301,7 +303,6 @@ bookingsRouter.put("/api/bookings/:id", async (req, res, next) => {
       res.status(found.error.status).json(found.error.body);
       return;
     }
-    const { room } = found;
 
     const startAt = toBangkokInstant(date, startTime);
     const endAt = toBangkokInstant(date, endTime);
@@ -309,7 +310,6 @@ bookingsRouter.put("/api/bookings/:id", async (req, res, next) => {
     const booking = await prisma.$transaction(async (tx) => {
       const reasons = await evaluateBookingRules(tx, {
         roomId,
-        roomCapacity: room.capacity,
         attendeeCount,
         date,
         startTime,

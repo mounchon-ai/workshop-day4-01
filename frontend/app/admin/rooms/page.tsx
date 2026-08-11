@@ -34,6 +34,25 @@ export default function AdminRoomsPage() {
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [rowActingId, setRowActingId] = useState<string | null>(null);
+  // Keyed by room id (not a single slot) — two different rows' actions can
+  // fail around the same time, and each row's error must stay visible on
+  // its own row rather than the later failure hiding the earlier one.
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+
+  function setRowError(roomId: string, message: string | null) {
+    setRowErrors((prev) => {
+      const next = { ...prev };
+      if (message === null) {
+        delete next[roomId];
+      } else {
+        next[roomId] = message;
+      }
+      return next;
+    });
+  }
+
   function fieldError(field: string) {
     return fieldErrors.find((e) => e.field === field)?.message;
   }
@@ -94,6 +113,49 @@ export default function AdminRoomsPage() {
     }
 
     cancelEdit();
+    await refreshRooms();
+  }
+
+  async function toggleStatus(room: Room) {
+    setRowActingId(room.id);
+    setRowError(room.id, null);
+
+    const nextStatus = room.status === "active" ? "disabled" : "active";
+    const result = await apiRequest<Room>(`/api/rooms/${room.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        name: room.name,
+        capacity: room.capacity,
+        building: room.building,
+        floor: room.floor,
+        status: nextStatus,
+      }),
+    });
+
+    setRowActingId(null);
+
+    if (!result.ok) {
+      setRowError(room.id, result.body.message ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
+      return;
+    }
+
+    await refreshRooms();
+  }
+
+  async function confirmDelete(room: Room) {
+    setRowActingId(room.id);
+    setRowError(room.id, null);
+
+    const result = await apiRequest<void>(`/api/rooms/${room.id}`, { method: "DELETE" });
+
+    setRowActingId(null);
+    setConfirmingDeleteId(null);
+
+    if (!result.ok) {
+      setRowError(room.id, result.body.message ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
+      return;
+    }
+
     await refreshRooms();
   }
 
@@ -170,6 +232,7 @@ export default function AdminRoomsPage() {
             <TableHead>Capacity</TableHead>
             <TableHead>อาคาร</TableHead>
             <TableHead>ชั้น</TableHead>
+            <TableHead>สถานะ</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -180,10 +243,64 @@ export default function AdminRoomsPage() {
               <TableCell>{room.capacity}</TableCell>
               <TableCell>{room.building}</TableCell>
               <TableCell>{room.floor}</TableCell>
+              <TableCell>{room.status === "active" ? "เปิดใช้งาน" : "ปิดการใช้งาน"}</TableCell>
               <TableCell>
-                <Button variant="outline" size="sm" onClick={() => startEdit(room)}>
-                  แก้ไข
-                </Button>
+                {rowErrors[room.id] && (
+                  <p className="mb-1 whitespace-normal text-sm text-red-600">{rowErrors[room.id]}</p>
+                )}
+                {confirmingDeleteId === room.id ? (
+                  <div className="flex flex-col gap-1">
+                    <p className="whitespace-normal text-sm">ยืนยันการลบห้องนี้หรือไม่?</p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={rowActingId === room.id}
+                        onClick={() => confirmDelete(room)}
+                      >
+                        ยืนยันลบ
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={rowActingId === room.id}
+                        onClick={() => setConfirmingDeleteId(null)}
+                      >
+                        ไม่ลบ
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={rowActingId === room.id}
+                      onClick={() => startEdit(room)}
+                    >
+                      แก้ไข
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={rowActingId === room.id}
+                      onClick={() => toggleStatus(room)}
+                    >
+                      {room.status === "active" ? "ปิดการใช้งาน" : "เปิดใช้งาน"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={rowActingId === room.id}
+                      onClick={() => {
+                        setRowError(room.id, null);
+                        setConfirmingDeleteId(room.id);
+                      }}
+                    >
+                      ลบ
+                    </Button>
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ))}

@@ -21,6 +21,10 @@ export const roomInputSchema = z.object({
     .trim()
     .min(1, "กรุณาระบุชั้น")
     .max(20, "ชั้นต้องไม่เกิน 20 ตัวอักษร"),
+  // Optional (FR-ROOM-05, ticket 11): omitted on a plain data edit, leaves
+  // status untouched; supplied by the admin's enable/disable toggle, which
+  // resubmits the room's current fields alongside the flipped status.
+  status: z.enum(["active", "disabled"], { error: "สถานะไม่ถูกต้อง" }).optional(),
 });
 
 export type RoomInput = z.infer<typeof roomInputSchema>;

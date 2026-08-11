@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api";
 import { formatBangkok } from "@/lib/bangkok-time";
+import { BOOKING_STATUS_LABELS } from "@/lib/booking-status";
 import { useNow } from "@/lib/use-now";
 
 type Room = {
@@ -32,12 +33,6 @@ type Booking = {
   status: string;
   room: Room;
   employee: Employee;
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  confirmed: "ยืนยันแล้ว",
-  cancelled: "ยกเลิกแล้ว",
-  completed: "เสร็จสิ้น",
 };
 
 function BookingDetail({ id }: { id: string }) {
@@ -147,7 +142,7 @@ function BookingDetail({ id }: { id: string }) {
         </p>
         <p>
           <span className="font-medium">สถานะ:</span>{" "}
-          {STATUS_LABELS[booking.status] ?? booking.status}
+          {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
         </p>
       </div>
 

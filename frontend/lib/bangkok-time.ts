@@ -40,3 +40,12 @@ export function formatBangkokCompact(iso: string): string {
     timeStyle: "short",
   }).format(new Date(iso));
 }
+
+// Day-of-week (0 = Sunday ... 6 = Saturday, matching BusinessHours.dayOfWeek)
+// computed via UTC math, mirroring backend/src/bangkok-time.ts's
+// dayOfWeekForDate — deliberately not routed through a timezone-aware Date
+// parse, which can shift the calendar day.
+export function dayOfWeekForDate(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}

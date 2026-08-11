@@ -15,6 +15,7 @@ import {
 import { useApiList } from "@/lib/use-api-list";
 import { EmployeePicker, type Employee } from "@/components/employee-picker";
 import { formatBangkokCompact } from "@/lib/bangkok-time";
+import { BOOKING_STATUS_LABELS } from "@/lib/booking-status";
 import { useNow } from "@/lib/use-now";
 
 type Room = {
@@ -33,12 +34,6 @@ type Booking = {
   status: string;
   room: Room;
   employee: Employee;
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  confirmed: "ยืนยันแล้ว",
-  cancelled: "ยกเลิกแล้ว",
-  completed: "เสร็จสิ้น",
 };
 
 function MyBookings() {
@@ -122,7 +117,7 @@ function MyBookings() {
                     <TableCell>{booking.room.name}</TableCell>
                     <TableCell>{formatBangkokCompact(booking.startAt)}</TableCell>
                     <TableCell>{booking.title}</TableCell>
-                    <TableCell>{STATUS_LABELS[booking.status] ?? booking.status}</TableCell>
+                    <TableCell>{BOOKING_STATUS_LABELS[booking.status] ?? booking.status}</TableCell>
                     <TableCell>
                       <Link
                         href={`/bookings/${booking.id}?employeeId=${employee.id}`}

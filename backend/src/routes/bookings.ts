@@ -137,9 +137,36 @@ bookingsRouter.get("/api/bookings", async (req, res, next) => {
   }
 
   try {
+    if (parsed.data.employeeId) {
+      const bookings = await prisma.booking.findMany({
+        where: { employeeId: parsed.data.employeeId },
+        orderBy: { startAt: "desc" },
+        include: bookingInclude,
+      });
+      res.status(200).json(bookings);
+      return;
+    }
+
+    // Room usage calendar (FR-BKG-03, ticket 10): the requested "date" is a
+    // Bangkok wall-clock calendar day, so its instant range must go through
+    // toBangkokInstant (never UTC midnight-to-midnight) — see FUTURE_MONDAY
+    // helpers used across the booking tests for the same reasoning.
+    const { date, building, floor } = parsed.data;
+    // date is guaranteed present here — the schema's refine requires
+    // exactly one of employeeId/date.
+    const startOfDay = toBangkokInstant(date as string, "00:00");
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
     const bookings = await prisma.booking.findMany({
-      where: { employeeId: parsed.data.employeeId },
-      orderBy: { startAt: "desc" },
+      where: {
+        startAt: { gte: startOfDay, lt: endOfDay },
+        status: { in: ["confirmed", "completed"] },
+        room: {
+          ...(building ? { building } : {}),
+          ...(floor ? { floor } : {}),
+        },
+      },
+      orderBy: [{ room: { name: "asc" } }, { startAt: "asc" }],
       include: bookingInclude,
     });
     res.status(200).json(bookings);

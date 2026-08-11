@@ -124,6 +124,24 @@ describe("GET /api/bookings?employeeId=", () => {
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("validation_error");
   });
+
+  it("rejects an explicitly empty employeeId the same way as an omitted one", async () => {
+    const response = await request(app).get("/api/bookings").query({ employeeId: "" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("validation_error");
+  });
+
+  it("rejects building/floor supplied alongside employeeId (only meaningful with date)", async () => {
+    const employee = await createEmployee();
+
+    const response = await request(app)
+      .get("/api/bookings")
+      .query({ employeeId: employee.id, building: "อาคาร A" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("validation_error");
+  });
 });
 
 describe("GET /api/bookings/:id", () => {

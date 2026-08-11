@@ -44,6 +44,11 @@ model Booking {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   auditEntries  BookingAudit[]
+
+  // Room usage calendar (FR-BKG-03, ticket 10) filters on a startAt range
+  // for every query — without this, that scan grows with total historical
+  // booking count instead of the day's actual row count.
+  @@index([startAt])
 }
 
 model BookingAudit {

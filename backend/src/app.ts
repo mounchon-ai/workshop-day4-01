@@ -1,6 +1,7 @@
 import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
 import { healthRouter } from "./routes/health.js";
+import { roomsRouter } from "./routes/rooms.js";
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err);
@@ -15,6 +16,7 @@ export function createApp() {
   app.use(express.json());
 
   app.use(healthRouter);
+  app.use(roomsRouter);
 
   app.use(errorHandler);
 

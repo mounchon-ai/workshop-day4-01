@@ -8,24 +8,41 @@ datasource db {
 }
 
 model Room {
-  id        String   @id @default(cuid())
-  name      String   @unique
+  id        String    @id @default(cuid())
+  name      String    @unique
   capacity  Int
   building  String
   floor     String
-  status    String   @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
 }
 
 model Employee {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   firstName  String
   lastName   String
   department String
-  status     String   @default("active")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  status     String    @default("active")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  bookings   Booking[]
+}
+
+model Booking {
+  id            String   @id @default(cuid())
+  roomId        String
+  room          Room     @relation(fields: [roomId], references: [id])
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id])
+  title         String
+  attendeeCount Int
+  startAt       DateTime
+  endAt         DateTime
+  status        String   @default("confirmed")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model BusinessHours {

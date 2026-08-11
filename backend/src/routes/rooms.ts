@@ -2,13 +2,68 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { roomInputSchema } from "../schemas/room.js";
+import { roomSearchQuerySchema } from "../schemas/room-search.js";
 import { parseBody } from "../validation.js";
+import { dayOfWeekForDate, toBangkokInstant } from "../bangkok-time.js";
 
 export const roomsRouter = Router();
 
 roomsRouter.get("/api/rooms", async (_req, res, next) => {
   try {
     const rooms = await prisma.room.findMany({ orderBy: { name: "asc" } });
+    res.status(200).json(rooms);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Registered before "/api/rooms/:id"-shaped routes so the literal path
+// "available" is never captured as an :id param.
+roomsRouter.get("/api/rooms/available", async (req, res, next) => {
+  const parsed = parseBody(roomSearchQuerySchema, req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "validation_error", fields: parsed.errors });
+    return;
+  }
+
+  const { date, startTime, endTime, attendeeCount, building, floor } = parsed.data;
+
+  try {
+    const businessHours = await prisma.businessHours.findUniqueOrThrow({
+      where: { dayOfWeek: dayOfWeekForDate(date) },
+    });
+
+    if (!businessHours.isOpen || startTime < businessHours.openTime || endTime > businessHours.closeTime) {
+      res.status(409).json({
+        error: "outside_business_hours",
+        message: businessHours.isOpen
+          ? `ช่วงเวลาที่ระบุอยู่นอกเวลาทำการ วันนี้เปิดทำการ ${businessHours.openTime}-${businessHours.closeTime}`
+          : "วันที่เลือกเป็นวันหยุดทำการ ไม่เปิดให้จองห้องประชุม",
+        businessHours,
+      });
+      return;
+    }
+
+    const startAt = toBangkokInstant(date, startTime);
+    const endAt = toBangkokInstant(date, endTime);
+
+    const rooms = await prisma.room.findMany({
+      where: {
+        status: "active",
+        capacity: { gte: attendeeCount },
+        ...(building ? { building } : {}),
+        ...(floor ? { floor } : {}),
+        bookings: {
+          none: {
+            status: "confirmed",
+            startAt: { lt: endAt },
+            endAt: { gt: startAt },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
     res.status(200).json(rooms);
   } catch (err) {
     next(err);

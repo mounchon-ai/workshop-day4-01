@@ -13,10 +13,19 @@ export type ApiResult<T> =
   | { ok: false; status: number; body: ApiErrorBody };
 
 export async function apiRequest<T>(path: string, options?: RequestInit): Promise<ApiResult<T>> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options?.headers },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...options?.headers },
+    });
+  } catch {
+    return {
+      ok: false,
+      status: 0,
+      body: { error: "network_error", message: "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่" },
+    };
+  }
 
   const body = await response.json().catch(() => ({}));
 

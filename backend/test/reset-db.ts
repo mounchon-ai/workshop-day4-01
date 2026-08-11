@@ -8,6 +8,7 @@ import { DEFAULT_BUSINESS_HOURS } from "../src/business-hours-defaults.js";
  * are added.
  */
 export async function resetDb() {
+  await prisma.booking.deleteMany();
   await prisma.room.deleteMany();
   await prisma.employee.deleteMany();
 

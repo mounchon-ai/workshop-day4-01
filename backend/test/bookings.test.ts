@@ -4,7 +4,12 @@ import { createApp } from "../src/app.js";
 import { prisma } from "../src/prisma.js";
 import { resetDb } from "./reset-db.js";
 
-const app = createApp();
+// This file exercises POST /api/bookings heavily for unrelated reasons
+// (17 call sites, one of them an 8-request concurrent burst) — opting out
+// of the production booking-creation rate limit keeps it from becoming
+// fragile as more tests are added here. Rate-limit behavior itself is
+// covered by bookings-rate-limit.test.ts.
+const app = createApp({ bookingRateLimit: { max: Number.MAX_SAFE_INTEGER } });
 
 // Computed relative to "now" so these tests stay valid whenever they run,
 // rather than hardcoding a date that will eventually be in the past.

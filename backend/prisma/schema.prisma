@@ -31,18 +31,35 @@ model Employee {
 }
 
 model Booking {
-  id            String   @id @default(cuid())
+  id            String         @id @default(cuid())
   roomId        String
-  room          Room     @relation(fields: [roomId], references: [id])
+  room          Room           @relation(fields: [roomId], references: [id])
   employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id])
+  employee      Employee       @relation(fields: [employeeId], references: [id])
   title         String
   attendeeCount Int
   startAt       DateTime
   endAt         DateTime
-  status        String   @default("confirmed")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  status        String         @default("confirmed")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  auditEntries  BookingAudit[]
+}
+
+model BookingAudit {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  action    String
+  // Not a FK to Employee (per DR-03 data dictionary): this is a snapshot of
+  // the self-reported employeeId at the time of the action (CON-03), not a
+  // verified identity, and must survive independently of the Employee row
+  // for PDPA erasure (DR-09/DR-11).
+  actorEmployeeId String
+  detail          String?
+  actedAt         DateTime @default(now())
+
+  @@index([bookingId])
 }
 
 model BusinessHours {

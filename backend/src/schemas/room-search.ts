@@ -1,21 +1,18 @@
 import { z } from "zod";
-import { isValidCalendarDate } from "../bangkok-time.js";
-
-const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+import { DATE_PATTERN, TIME_PATTERN, isValidCalendarDate } from "../bangkok-time.js";
 
 export const roomSearchQuerySchema = z
   .object({
     date: z
       .string({ error: "กรุณาระบุวันที่" })
-      .regex(datePattern, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)")
+      .regex(DATE_PATTERN, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)")
       .refine(isValidCalendarDate, "วันที่ไม่ถูกต้อง"),
     startTime: z
       .string({ error: "กรุณาระบุเวลาเริ่ม" })
-      .regex(timePattern, "เวลาเริ่มต้องอยู่ในรูปแบบ HH:MM"),
+      .regex(TIME_PATTERN, "เวลาเริ่มต้องอยู่ในรูปแบบ HH:MM"),
     endTime: z
       .string({ error: "กรุณาระบุเวลาสิ้นสุด" })
-      .regex(timePattern, "เวลาสิ้นสุดต้องอยู่ในรูปแบบ HH:MM"),
+      .regex(TIME_PATTERN, "เวลาสิ้นสุดต้องอยู่ในรูปแบบ HH:MM"),
     attendeeCount: z.coerce
       .number({ error: "จำนวนผู้เข้าร่วมต้องเป็นตัวเลข" })
       .int("จำนวนผู้เข้าร่วมต้องเป็นจำนวนเต็ม")

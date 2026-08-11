@@ -2,6 +2,11 @@
 // (DR-07, ASM-05) — never the host server's timezone.
 const BANGKOK_OFFSET = "+07:00";
 
+// Shared by every schema that accepts a "YYYY-MM-DD" date and/or "HH:MM"
+// time, so the accepted shape can't drift between endpoints.
+export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+export const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
 // Combines a "YYYY-MM-DD" date and "HH:MM" time (both Bangkok wall-clock)
 // into the absolute instant they represent, for storing/comparing datetimes.
 export function toBangkokInstant(date: string, time: string): Date {

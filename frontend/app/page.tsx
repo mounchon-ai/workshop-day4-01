@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -215,6 +216,7 @@ export default function Home() {
               <TableHead>Capacity</TableHead>
               <TableHead>อาคาร</TableHead>
               <TableHead>ชั้น</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -224,6 +226,20 @@ export default function Home() {
                 <TableCell>{room.capacity}</TableCell>
                 <TableCell>{room.building}</TableCell>
                 <TableCell>{room.floor}</TableCell>
+                <TableCell>
+                  <Link
+                    href={`/book?${new URLSearchParams({
+                      roomId: room.id,
+                      date,
+                      startTime,
+                      endTime,
+                      attendeeCount,
+                    }).toString()}`}
+                    className={buttonVariants({ size: "sm" })}
+                  >
+                    จองห้องนี้
+                  </Link>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

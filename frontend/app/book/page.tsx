@@ -32,12 +32,24 @@ type BookingDetail = {
 
 type RejectionReason = { rule: string; message: string };
 
+// Keyed on the full query string by the wrapper below, so a navigation that
+// changes roomId/date/startTime/endTime (e.g. a future "book a different
+// room" link) fully remounts this component instead of carrying over stale
+// useState values — startTime/endTime/employee/title/attendeeCount are all
+// local state seeded once from the URL, not re-derived every render.
 function BookingForm() {
   const searchParams = useSearchParams();
   const roomId = searchParams.get("roomId") ?? "";
   const date = searchParams.get("date") ?? "";
-  const startTime = searchParams.get("startTime") ?? "";
-  const endTime = searchParams.get("endTime") ?? "";
+
+  // The per-room calendar (/rooms/[id]) links here with only a date picked,
+  // not a time range — search results link here with both already chosen.
+  // Missing either means the visitor hasn't picked times yet, so both
+  // become editable inputs instead of the read-only summary text search
+  // results get.
+  const timesEditable = !searchParams.get("startTime") || !searchParams.get("endTime");
+  const [startTime, setStartTime] = useState(searchParams.get("startTime") ?? "");
+  const [endTime, setEndTime] = useState(searchParams.get("endTime") ?? "");
 
   const { data: allRooms } = useApiList<Room>("/api/rooms");
   const room = allRooms.find((r) => r.id === roomId);
@@ -56,11 +68,17 @@ function BookingForm() {
     return fieldErrors.find((e) => e.field === field)?.message;
   }
 
-  // date/startTime/endTime/roomId are shown as read-only summary text, not
-  // editable inputs on this page (they're carried over from search), so
-  // errors on those fields (e.g. FR-BKG-09's past-start-time check) have no
-  // input to render next to — surface them as a banner instead.
-  const attachedFields = new Set(["employeeId", "title", "attendeeCount"]);
+  // date/roomId are always shown as read-only summary text (carried over
+  // from search or from the per-room calendar), so errors on those fields
+  // have no input to render next to — surface them as a banner instead.
+  // startTime/endTime only get an input when timesEditable, so they only
+  // move out of the banner in that case.
+  const attachedFields = new Set([
+    "employeeId",
+    "title",
+    "attendeeCount",
+    ...(timesEditable ? ["startTime", "endTime"] : []),
+  ]);
   const unattachedFieldErrors = fieldErrors.filter((e) => !attachedFields.has(e.field));
 
   async function handleSubmit(e: React.FormEvent) {
@@ -160,9 +178,11 @@ function BookingForm() {
         <p>
           <span className="font-medium">วันที่:</span> {date}
         </p>
-        <p>
-          <span className="font-medium">เวลา:</span> {startTime}-{endTime}
-        </p>
+        {!timesEditable && (
+          <p>
+            <span className="font-medium">เวลา:</span> {startTime}-{endTime}
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -175,6 +195,36 @@ function BookingForm() {
                 <li key={error.field}>{error.message}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {timesEditable && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="startTime">เวลาเริ่ม</Label>
+              <Input
+                id="startTime"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+              {fieldError("startTime") && (
+                <p className="text-sm text-red-600">{fieldError("startTime")}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="endTime">เวลาสิ้นสุด</Label>
+              <Input
+                id="endTime"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+              {fieldError("endTime") && (
+                <p className="text-sm text-red-600">{fieldError("endTime")}</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -227,10 +277,15 @@ function BookingForm() {
   );
 }
 
+function KeyedBookingForm() {
+  const searchParams = useSearchParams();
+  return <BookingForm key={searchParams.toString()} />;
+}
+
 export default function BookPage() {
   return (
     <Suspense fallback={null}>
-      <BookingForm />
+      <KeyedBookingForm />
     </Suspense>
   );
 }

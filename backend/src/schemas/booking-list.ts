@@ -25,14 +25,29 @@ export const bookingListQuerySchema = z
     // never gets silence when the combination doesn't apply.
     building: z.string().trim().min(1).optional(),
     floor: z.string().trim().min(1).optional(),
+    // Per-room calendar (ticket 15) — same date-mode-only rule as
+    // building/floor above.
+    roomId: z.string().trim().min(1).optional(),
   })
   .refine((data) => Boolean(data.employeeId) !== Boolean(data.date), {
     message: "กรุณาระบุ employeeId หรือ date อย่างใดอย่างหนึ่ง",
     path: [],
   })
-  .refine((data) => !data.employeeId || (!data.building && !data.floor), {
-    message: "building/floor ใช้ได้เฉพาะเมื่อระบุ date เท่านั้น",
-    path: ["building"],
+  // One issue per offending field actually supplied, rather than always
+  // blaming "building" — a caller relying on the field name to attach the
+  // message to the right input (as the frontend does via fieldError(field))
+  // would otherwise silently drop a roomId- or floor-only violation.
+  .superRefine((data, ctx) => {
+    if (!data.employeeId) return;
+    for (const field of ["building", "floor", "roomId"] as const) {
+      if (data[field]) {
+        ctx.addIssue({
+          code: "custom",
+          message: `${field} ใช้ได้เฉพาะเมื่อระบุ date เท่านั้น`,
+          path: [field],
+        });
+      }
+    }
   });
 
 export type BookingListQuery = z.infer<typeof bookingListQuerySchema>;

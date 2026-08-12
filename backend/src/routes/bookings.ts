@@ -155,7 +155,7 @@ bookingsRouter.get("/api/bookings", async (req, res, next) => {
     // Bangkok wall-clock calendar day, so its instant range must go through
     // toBangkokInstant (never UTC midnight-to-midnight) — see FUTURE_MONDAY
     // helpers used across the booking tests for the same reasoning.
-    const { date, building, floor } = parsed.data;
+    const { date, building, floor, roomId } = parsed.data;
     // date is guaranteed present here — the schema's refine requires
     // exactly one of employeeId/date.
     const startOfDay = toBangkokInstant(date as string, "00:00");
@@ -165,6 +165,7 @@ bookingsRouter.get("/api/bookings", async (req, res, next) => {
       where: {
         startAt: { gte: startOfDay, lt: endOfDay },
         status: { in: ["confirmed", "completed"] },
+        ...(roomId ? { roomId } : {}),
         room: {
           ...(building ? { building } : {}),
           ...(floor ? { floor } : {}),

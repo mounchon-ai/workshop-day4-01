@@ -175,6 +175,35 @@ describe("GET /api/bookings?date= — room usage calendar (FR-BKG-03)", () => {
     expect(response.body.map((b: { title: string }) => b.title)).toEqual(["ตรงเงื่อนไข"]);
   });
 
+  it("filters by roomId (ticket 15: per-room calendar)", async () => {
+    const roomMatch = await createRoom({ name: "ห้องตรง" });
+    const roomOther = await createRoom({ name: "ห้องอื่น" });
+    const employee = await createEmployee();
+
+    await seedBooking(roomMatch.id, employee.id, { title: "ตรงห้อง" });
+    await seedBooking(roomOther.id, employee.id, { title: "ห้องอื่น" });
+
+    const response = await request(app)
+      .get("/api/bookings")
+      .query({ date: "2026-06-01", roomId: roomMatch.id });
+
+    expect(response.status).toBe(200);
+    expect(response.body.map((b: { title: string }) => b.title)).toEqual(["ตรงห้อง"]);
+  });
+
+  it("rejects roomId supplied alongside employeeId", async () => {
+    const room = await createRoom();
+    const employee = await createEmployee();
+    await seedBooking(room.id, employee.id);
+
+    const response = await request(app)
+      .get("/api/bookings")
+      .query({ employeeId: employee.id, roomId: room.id });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("validation_error");
+  });
+
   it("includes full room and employee detail on each item", async () => {
     const room = await createRoom();
     const employee = await createEmployee();

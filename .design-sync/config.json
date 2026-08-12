@@ -1,0 +1,11 @@
+{
+  "projectId": "b8eb5534-6ee2-4b27-b791-f7f42466ecc0",
+  "shape": "package",
+  "pkg": "frontend",
+  "globalName": "RoomBookingUI",
+  "entry": "./frontend/dist/index.js",
+  "srcDir": "components/ui",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".ds-tailwind-compiled.css",
+  "readmeHeader": ".design-sync/conventions.md"
+}
